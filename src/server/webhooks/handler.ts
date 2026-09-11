@@ -48,7 +48,8 @@ export function makeWebhookHandlers(provider: WebhookProvider) {
 
     // Responde 200 imediatamente (a Meta reenvia se demorar).
     // `after` mantém a função viva na Vercel para processar depois da resposta;
-    // o cron a cada minuto é a rede de segurança.
+    // o cron diário é a rede de segurança (conta Hobby da Vercel só permite
+    // cron 1x/dia — em um plano Pro, pode voltar a rodar a cada minuto).
     if (enqueued) {
       after(async () => {
         try {

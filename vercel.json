@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/process-events",
-      "schedule": "* * * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/follow-ups",
