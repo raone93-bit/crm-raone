@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # Reative depois de commitar o package-lock.json:
+          # cache: npm
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Testes obrigatórios (item 50)
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true

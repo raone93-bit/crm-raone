@@ -1,0 +1,1355 @@
+// ─────────────────────────────────────────────────────────────────────────────
+//  CRM Raone — schema de dados (fonte da verdade do modelo)
+//  Cobre todas as fases. Modelos de fases futuras já entram aqui para manter
+//  as migrações estáveis. Multiempresa: organizationId em toda entidade.
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  SELLER
+  OPERATIONS
+  VIEWER
+}
+
+enum Channel {
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+  EMAIL
+  PHONE
+  MANUAL
+  WEBSITE
+}
+
+enum Language {
+  PT
+  ES
+  EN
+  OTHER
+}
+
+enum Market {
+  DOMESTIC
+  USA
+  LATAM
+  EUROPE
+  OTHER
+}
+
+enum LeadSourceType {
+  INSTAGRAM
+  WHATSAPP
+  FACEBOOK
+  FORM
+  WEBSITE
+  MANUAL
+  CAMPAIGN
+  REFERRAL
+}
+
+enum LeadTemperature {
+  COLD
+  WARM
+  QUALIFIED
+  HOT
+}
+
+enum IntentType {
+  PRICE
+  AVAILABILITY
+  SAMPLE
+  QUOTE
+  FREIGHT
+  EXPORT
+  PROJECT
+  MEDIA_REQUEST
+  GREETING
+  OTHER
+}
+
+enum ConversationStatus {
+  OPEN
+  PENDING
+  SNOOZED
+  CLOSED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  LOCATION
+  CONTACT
+  STICKER
+  SYSTEM
+}
+
+enum MessageStatus {
+  RECEIVED
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum IntegrationType {
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+}
+
+enum IntegrationStatus {
+  NOT_CONFIGURED
+  CONNECTED
+  ERROR
+  DISCONNECTED
+}
+
+enum WebhookProvider {
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+}
+
+enum WebhookStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+  SKIPPED
+}
+
+enum MaterialType {
+  GRANITE
+  QUARTZITE
+  MARBLE
+  DOLOMITE
+  SOAPSTONE
+  QUARTZ
+  OTHER
+}
+
+enum Finish {
+  POLISHED
+  HONED
+  LEATHER
+  BRUSHED
+  SANDBLASTED
+  SAWN
+  OTHER
+}
+
+enum StockStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  IN_PRODUCTION
+  IN_NEGOTIATION
+}
+
+enum QualityGrade {
+  FIRST
+  COMMERCIAL
+  A
+  B
+  C
+}
+
+enum CompanyType {
+  IMPORTER
+  DISTRIBUTOR
+  FABRICATOR
+  ARCHITECT
+  DESIGNER
+  BUILDER
+  RETAILER
+  OTHER
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+enum Incoterm {
+  EXW
+  FOB
+  CFR
+  CIF
+  DAP
+  DDP
+}
+
+enum Currency {
+  BRL
+  USD
+  EUR
+}
+
+enum OrderStatus {
+  CONFIRMED
+  IN_PRODUCTION
+  READY
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  WIRE
+  LC
+  CASH
+  BOLETO
+  CARD
+  OTHER
+}
+
+enum ShipmentStatus {
+  ORDER_CONFIRMED
+  AWAITING_BOOKING
+  BOOKING_CONFIRMED
+  AWAITING_EMPTY
+  EMPTY_SCHEDULED
+  CONTAINER_LOADED
+  CONTAINER_GATED_IN
+  IN_TRANSIT
+  ARRIVED
+  DOCUMENTATION
+  COMPLETED
+}
+
+enum ShipmentDocumentType {
+  COMMERCIAL_INVOICE
+  PACKING_LIST
+  BILL_OF_LADING
+  ISF
+  CERTIFICATE_OF_ORIGIN
+  INSURANCE
+  OTHER
+}
+
+enum BLType {
+  EXPRESS_RELEASE
+  ORIGINAL
+  SEAWAY
+}
+
+enum TaskType {
+  CALL
+  SEND_QUOTE
+  SEND_PHOTOS
+  SEND_VIDEO
+  CONFIRM_STOCK
+  CHECK_FREIGHT
+  FOLLOW_UP
+  CONFIRM_PAYMENT
+  OTHER
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+enum FollowUpTrigger {
+  AI
+  RULE
+  MANUAL
+}
+
+enum LostReason {
+  PRICE
+  NO_STOCK
+  LEAD_TIME
+  FREIGHT
+  CUSTOMER_GAVE_UP
+  PROJECT_CANCELLED
+  COMPETITOR
+  MATERIAL_UNAVAILABLE
+  NO_RESPONSE
+  OTHER
+}
+
+enum ActorType {
+  USER
+  AI
+  SYSTEM
+  CONTACT
+}
+
+enum AiProvider {
+  ANTHROPIC
+  OPENAI
+}
+
+// ─── Organização & acesso ────────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  country   String   @default("BR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users              User[]
+  sellers            Seller[]
+  contacts           Contact[]
+  contactIdentities  ContactIdentity[]
+  companies          Company[]
+  customers          Customer[]
+  funnels            Funnel[]
+  leads              Lead[]
+  leadStageEvents    LeadStageEvent[]
+  leadSources        LeadSource[]
+  campaigns          Campaign[]
+  conversations      Conversation[]
+  messages           Message[]
+  aiAnalyses         AiAnalysis[]
+  integrations       Integration[]
+  webhookEvents      WebhookEvent[]
+  materials          Material[]
+  blocks             Block[]
+  bundles            Bundle[]
+  slabs              Slab[]
+  projects           Project[]
+  quotes             Quote[]
+  orders             Order[]
+  payments           Payment[]
+  shipments          Shipment[]
+  tasks              Task[]
+  followUps          FollowUp[]
+  notes              Note[]
+  activities         Activity[]
+  auditLogs          AuditLog[]
+  consents           Consent[]
+}
+
+// Auth.js (Prisma adapter) + campos do CRM.
+model User {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  image          String?
+  passwordHash   String?
+  role           Role      @default(SELLER)
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  seller       Seller?
+  accounts     Account[]
+  sessions     Session[]
+
+  assignedLeads         Lead[]           @relation("LeadOwner")
+  assignedConversations Conversation[]   @relation("ConversationOwner")
+  assignedTasks         Task[]           @relation("TaskAssignee")
+  followUps             FollowUp[]       @relation("FollowUpAssignee")
+  notesAuthored         Note[]
+  activitiesActed       Activity[]       @relation("ActivityUser")
+  auditLogs             AuditLog[]
+  leadStageEvents       LeadStageEvent[] @relation("LeadStageActor")
+  projectsOwned         Project[]        @relation("ProjectOwner")
+  quotesOwned           Quote[]          @relation("QuoteOwner")
+  ordersOwned           Order[]          @relation("OrderOwner")
+
+  @@index([organizationId])
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// Perfil comercial de um usuário vendedor.
+model Seller {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String   @unique
+  displayName    String
+  languages      Language[]
+  active         Boolean  @default(true)
+  isTriageQueue  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads         Lead[]
+  routingRules  RoutingRule[]
+  conversations Conversation[]
+
+  @@index([organizationId])
+}
+
+// Regras de distribuição por idioma — editáveis pelo admin (dado, não código).
+model RoutingRule {
+  id             String   @id @default(cuid())
+  organizationId String
+  language       Language
+  sellerId       String
+  priority       Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, language])
+  @@index([organizationId])
+}
+
+// ─── Contatos, empresas, clientes ────────────────────────────────────────────
+
+model Contact {
+  id              String    @id @default(cuid())
+  organizationId  String
+  displayName     String
+  firstName       String?
+  lastName        String?
+  email           String?
+  phone           String? // E.164
+  primaryLanguage Language?
+  country         String?
+  city            String?
+  state           String?
+  market          Market?
+  avatarUrl       String?
+  notes           String?
+  isBlocked       Boolean   @default(false)
+  possibleDuplicateOfId String?
+  duplicateConfidence   Float?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization        Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  identities          ContactIdentity[]
+  companies           ContactCompany[]
+  leads               Lead[]
+  conversations       Conversation[]
+  customer            Customer?
+  projects            Project[]
+  tasks               Task[]
+  possibleDuplicateOf Contact?          @relation("ContactDuplicate", fields: [possibleDuplicateOfId], references: [id])
+  duplicates          Contact[]         @relation("ContactDuplicate")
+
+  @@index([organizationId])
+  @@index([organizationId, phone])
+  @@index([organizationId, email])
+}
+
+model ContactIdentity {
+  id             String   @id @default(cuid())
+  organizationId String
+  contactId      String
+  channel        Channel
+  externalId     String // telefone E.164, IG user id, FB PSID…
+  handle         String?
+  displayName    String?
+  rawProfile     Json?
+  verified       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, channel, externalId])
+  @@index([contactId])
+}
+
+model Company {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  type           CompanyType?
+  country        String?
+  city           String?
+  state          String?
+  website        String?
+  taxId          String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts     ContactCompany[]
+  customers    Customer[]
+  leads        Lead[]
+  projects     Project[]
+
+  @@index([organizationId])
+}
+
+model ContactCompany {
+  contactId String
+  companyId String
+  role      String?
+  isPrimary Boolean @default(false)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, companyId])
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  organizationId String
+  contactId      String?  @unique
+  companyId      String?
+  name           String
+  since          DateTime @default(now())
+  market         Market?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+  quotes       Quote[]
+  orders       Order[]
+
+  @@index([organizationId])
+}
+
+// ─── Funil ───────────────────────────────────────────────────────────────────
+
+model Funnel {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stages       FunnelStage[]
+  leads        Lead[]
+
+  @@index([organizationId])
+}
+
+model FunnelStage {
+  id          String   @id @default(cuid())
+  funnelId    String
+  name        String
+  position    Int
+  isWon       Boolean  @default(false)
+  isLost      Boolean  @default(false)
+  probability Int      @default(0) // 0-100
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  funnel Funnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  leads  Lead[]
+
+  @@unique([funnelId, position])
+  @@index([funnelId])
+}
+
+// ─── Leads ───────────────────────────────────────────────────────────────────
+
+model Lead {
+  id             String          @id @default(cuid())
+  organizationId String
+  contactId      String
+  companyId      String?
+  sellerId       String?
+  ownerUserId    String?
+  funnelId       String
+  stageId        String
+  title          String?
+  sourceType     LeadSourceType
+  channel        Channel
+  language       Language        @default(OTHER)
+  market         Market?
+  score          Int             @default(0)
+  temperature    LeadTemperature @default(COLD)
+  intentType     IntentType?
+
+  // Qualificação extraída (item 16-18). Vazio quando não informado — IA não inventa.
+  materialId     String?
+  materialText   String?
+  stoneType      MaterialType?
+  color          String?
+  thicknessCm    Float?
+  finish         Finish?
+  quantitySlabs  Int?
+  squareMeters   Float?
+  projectId      String?
+  deadline       DateTime?
+  priceRangeText String?
+  hasProject     Boolean         @default(false)
+  buyingIntent   Boolean         @default(false)
+
+  isTriage       Boolean         @default(false)
+  lostReason     LostReason?
+  lostNote       String?
+  wonAt          DateTime?
+  lostAt         DateTime?
+  lastContactAt  DateTime?
+  nextFollowUpAt DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  company      Company?         @relation(fields: [companyId], references: [id])
+  seller       Seller?          @relation(fields: [sellerId], references: [id])
+  owner        User?            @relation("LeadOwner", fields: [ownerUserId], references: [id])
+  funnel       Funnel           @relation(fields: [funnelId], references: [id])
+  stage        FunnelStage      @relation(fields: [stageId], references: [id])
+  material     Material?        @relation(fields: [materialId], references: [id])
+  project      Project?         @relation(fields: [projectId], references: [id])
+  stageEvents  LeadStageEvent[]
+  sources      LeadSource[]
+  tasks        Task[]
+  followUps    FollowUp[]
+  quotes       Quote[]
+  scoreFactors LeadScoreFactor[]
+
+  @@index([organizationId])
+  @@index([organizationId, sellerId])
+  @@index([organizationId, stageId])
+  @@index([contactId])
+}
+
+model LeadStageEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  leadId         String
+  fromStageId    String?
+  toStageId      String
+  changedByUserId String?
+  actorType      ActorType @default(USER)
+  note           String?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  changedBy    User?        @relation("LeadStageActor", fields: [changedByUserId], references: [id])
+
+  @@index([leadId])
+}
+
+model LeadScoreFactor {
+  id        String   @id @default(cuid())
+  leadId    String
+  factor    String
+  weight    Int
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+}
+
+model Campaign {
+  id             String   @id @default(cuid())
+  organizationId String
+  provider       String // meta, google…
+  externalId     String?
+  name           String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadSources  LeadSource[]
+
+  @@index([organizationId])
+}
+
+model LeadSource {
+  id             String         @id @default(cuid())
+  organizationId String
+  leadId         String
+  type           LeadSourceType
+  campaignId     String?
+  adset          String?
+  ad             String?
+  referral       String?
+  raw            Json?
+  createdAt      DateTime       @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  campaign     Campaign?    @relation(fields: [campaignId], references: [id])
+
+  @@index([leadId])
+}
+
+// ─── Conversas & mensagens ───────────────────────────────────────────────────
+
+model Conversation {
+  id               String             @id @default(cuid())
+  organizationId   String
+  contactId        String
+  channel          Channel
+  externalThreadId String?
+  status           ConversationStatus @default(OPEN)
+  assignedSellerId String?
+  assignedUserId   String?
+  subject          String?
+  unreadCount      Int                @default(0)
+  lastMessageAt    DateTime?
+  lastMessagePreview String?
+  snoozedUntil     DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  seller       Seller?      @relation(fields: [assignedSellerId], references: [id])
+  assignedUser User?        @relation("ConversationOwner", fields: [assignedUserId], references: [id])
+  messages     Message[]
+
+  @@unique([organizationId, channel, externalThreadId])
+  @@index([organizationId, status])
+  @@index([contactId])
+}
+
+model Message {
+  id                String           @id @default(cuid())
+  organizationId    String
+  conversationId    String
+  direction         MessageDirection
+  channel           Channel
+  externalMessageId String?
+  type              MessageType      @default(TEXT)
+  text              String?
+  mediaUrl          String?
+  mediaMimeType     String?
+  mediaFileName     String?
+  senderName        String?
+  sentByUserId      String?
+  status            MessageStatus    @default(RECEIVED)
+  errorCode         String?
+  errorMessage      String?
+  raw               Json?
+  externalTimestamp DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  aiAnalysis   AiAnalysis?
+
+  @@unique([organizationId, channel, externalMessageId])
+  @@index([conversationId])
+}
+
+model AiAnalysis {
+  id                  String      @id @default(cuid())
+  organizationId      String
+  messageId           String      @unique
+  source              String      @default("heuristic") // heuristic | ai | ai+heuristic
+  provider            AiProvider?
+  model               String?
+  language            Language
+  languageConfidence  Float?
+  hasCommercialIntent Boolean
+  intentType          IntentType?
+  extracted           Json?
+  score               Int?
+  scoreFactors        Json?
+  summary             String?
+  suggestedReply      String?
+  confidence          Float?
+  inputTokens         Int?
+  outputTokens        Int?
+  costUsd             Float?
+  createdAt           DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  message      Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ─── Integrações & webhooks ──────────────────────────────────────────────────
+
+model Integration {
+  id             String            @id @default(cuid())
+  organizationId String
+  type           IntegrationType
+  status         IntegrationStatus @default(NOT_CONFIGURED)
+  wabaId         String?
+  phoneNumberId  String?
+  pageId         String?
+  igAccountId    String?
+  // Token cifrado em repouso (AES-256-GCM). Nunca exposto ao frontend.
+  encryptedToken String?
+  webhookVerified Boolean          @default(false)
+  lastSyncAt     DateTime?
+  lastError      String?
+  config         Json?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, type])
+  @@index([organizationId])
+}
+
+model WebhookEvent {
+  id             String          @id @default(cuid())
+  organizationId String?
+  provider       WebhookProvider
+  eventId        String
+  signatureValid Boolean         @default(false)
+  payload        Json
+  status         WebhookStatus   @default(PENDING)
+  attempts       Int             @default(0)
+  lastError      String?
+  processedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([provider, eventId])
+  @@index([status, createdAt])
+}
+
+// ─── Catálogo & estoque ──────────────────────────────────────────────────────
+
+model Material {
+  id             String       @id @default(cuid())
+  organizationId String
+  commercialName String
+  technicalName  String?
+  type           MaterialType
+  category       String?
+  origin         String?
+  quarry         String?
+  code           String?
+  color          String?
+  description    String?
+  media          Json?
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  blocks       Block[]
+  bundles      Bundle[]
+  slabs        Slab[]
+  leads        Lead[]
+  quoteItems   QuoteItem[]
+  projects     Project[]
+
+  @@unique([organizationId, commercialName])
+  @@index([organizationId])
+}
+
+model Block {
+  id             String        @id @default(cuid())
+  organizationId String
+  materialId     String
+  blockNumber    String
+  quarry         String?
+  origin         String?
+  lengthCm       Float?
+  widthCm        Float?
+  heightCm       Float?
+  volumeM3       Float?
+  weightKg       Float?
+  quality        QualityGrade?
+  status         StockStatus   @default(AVAILABLE)
+  media          Json?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  material     Material     @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  bundles      Bundle[]
+
+  @@unique([organizationId, blockNumber])
+  @@index([materialId])
+}
+
+model Bundle {
+  id             String        @id @default(cuid())
+  organizationId String
+  materialId     String
+  blockId        String?
+  bundleNumber   String
+  slabCount      Int           @default(0)
+  squareMeters   Float?
+  thicknessCm    Float?
+  finish         Finish?
+  quality        QualityGrade?
+  location       String?
+  status         StockStatus   @default(AVAILABLE)
+  media          Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  material     Material     @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  block        Block?       @relation(fields: [blockId], references: [id])
+  slabs        Slab[]
+  quoteItems   QuoteItem[]
+
+  @@unique([organizationId, bundleNumber])
+  @@index([materialId])
+}
+
+model Slab {
+  id             String        @id @default(cuid())
+  organizationId String
+  materialId     String
+  bundleId       String?
+  slabNumber     String
+  lengthCm       Float?
+  widthCm        Float?
+  squareMeters   Float?
+  weightKg       Float?
+  thicknessCm    Float?
+  finish         Finish?
+  quality        QualityGrade?
+  location       String?
+  status         StockStatus   @default(AVAILABLE)
+  media          Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  material     Material     @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  bundle       Bundle?      @relation(fields: [bundleId], references: [id])
+
+  @@index([materialId])
+  @@index([bundleId])
+}
+
+// ─── Projetos ────────────────────────────────────────────────────────────────
+
+model Project {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  contactId      String?
+  companyId      String?
+  ownerUserId    String?
+  country        String?
+  city           String?
+  architect      String?
+  designer       String?
+  builder        String?
+  fabricator     String?
+  materialId     String?
+  estimatedSlabs Int?
+  squareMeters   Float?
+  deadline       DateTime?
+  budget         Float?
+  budgetCurrency Currency?
+  probability    Int       @default(0)
+  status         String    @default("open")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+  owner        User?        @relation("ProjectOwner", fields: [ownerUserId], references: [id])
+  material     Material?    @relation(fields: [materialId], references: [id])
+  leads        Lead[]
+  quotes       Quote[]
+
+  @@index([organizationId])
+}
+
+// ─── Cotações ────────────────────────────────────────────────────────────────
+
+model Quote {
+  id             String      @id @default(cuid())
+  organizationId String
+  number         String
+  leadId         String?
+  projectId      String?
+  customerId     String?
+  ownerUserId    String?
+  status         QuoteStatus @default(DRAFT)
+  currency       Currency    @default(USD)
+  incoterm       Incoterm?
+  portOfLoading  String?
+  portOfDestination String?
+  freightAmount  Float?
+  paymentTerms   String?
+  validUntil     DateTime?
+  notes          String?
+  subtotal       Float       @default(0)
+  total          Float       @default(0)
+  pdfUrl         String?
+  sentAt         DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead?        @relation(fields: [leadId], references: [id])
+  project      Project?     @relation(fields: [projectId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+  owner        User?        @relation("QuoteOwner", fields: [ownerUserId], references: [id])
+  items        QuoteItem[]
+  order        Order?
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+}
+
+model QuoteItem {
+  id           String  @id @default(cuid())
+  quoteId      String
+  materialId   String?
+  bundleId     String?
+  description  String
+  quantitySlabs Int?
+  squareMeters Float?
+  thicknessCm  Float?
+  finish       Finish?
+  unitPrice    Float   @default(0)
+  lineTotal    Float   @default(0)
+  position     Int     @default(0)
+
+  quote    Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  material Material?  @relation(fields: [materialId], references: [id])
+  bundle   Bundle?    @relation(fields: [bundleId], references: [id])
+
+  @@index([quoteId])
+}
+
+// ─── Pedidos & pagamentos ────────────────────────────────────────────────────
+
+model Order {
+  id             String      @id @default(cuid())
+  organizationId String
+  number         String
+  quoteId        String?     @unique
+  customerId     String?
+  ownerUserId    String?
+  market         Market      @default(DOMESTIC)
+  destination    String?
+  currency       Currency    @default(USD)
+  incoterm       Incoterm?
+  total          Float       @default(0)
+  paymentTerms   String?
+  status         OrderStatus @default(CONFIRMED)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quote        Quote?       @relation(fields: [quoteId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+  owner        User?        @relation("OrderOwner", fields: [ownerUserId], references: [id])
+  items        OrderItem[]
+  payments     Payment[]
+  shipment     Shipment?
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  description  String
+  materialId   String?
+  bundleId     String?
+  quantitySlabs Int?
+  squareMeters Float?
+  unitPrice    Float   @default(0)
+  lineTotal    Float   @default(0)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  organizationId String
+  orderId        String
+  amount         Float
+  currency       Currency      @default(USD)
+  method         PaymentMethod?
+  dueDate        DateTime?
+  paidAt         DateTime?
+  status         PaymentStatus @default(PENDING)
+  reference      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+// ─── Exportação & logística ──────────────────────────────────────────────────
+
+model Shipment {
+  id             String         @id @default(cuid())
+  organizationId String
+  orderId        String         @unique
+  status         ShipmentStatus @default(ORDER_CONFIRMED)
+  bookingNumber  String?
+  carrier        String?
+  vessel         String?
+  incoterm       Incoterm?
+  portOfLoading  String?
+  portOfDestination String?
+  etd            DateTime?
+  eta            DateTime?
+  blNumber       String?
+  blType         BLType?
+  isfStatus      String?
+  consignee      String?
+  notifyParty    String?
+  forwarder      String?
+  customsBroker  String?
+  emptyPickupAt  DateTime?
+  depot          String?
+  gateInAt       DateTime?
+  loadedAt       DateTime?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  containers   Container[]
+  documents    ShipmentDocument[]
+  bookings     Booking[]
+
+  @@index([organizationId])
+}
+
+model Container {
+  id            String  @id @default(cuid())
+  shipmentId    String
+  containerNumber String
+  seal          String?
+  type          String? // 20DV, 40DV, 40HC
+  tareKg        Float?
+  cargoWeightKg Float?
+  contents      Json?
+  createdAt     DateTime @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+}
+
+model ShipmentDocument {
+  id         String               @id @default(cuid())
+  shipmentId String
+  type       ShipmentDocumentType
+  fileUrl    String?
+  status     String               @default("pending")
+  notes      String?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+}
+
+model Booking {
+  id            String   @id @default(cuid())
+  shipmentId    String
+  bookingNumber String
+  carrier       String?
+  emptyPickupAt DateTime?
+  depot         DateTime?
+  gateInAt      DateTime?
+  status        String   @default("requested")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+}
+
+// ─── Tarefas, follow-ups, timeline ───────────────────────────────────────────
+
+model Task {
+  id             String     @id @default(cuid())
+  organizationId String
+  leadId         String?
+  contactId      String?
+  assigneeUserId String?
+  type           TaskType   @default(OTHER)
+  title          String
+  note           String?
+  dueAt          DateTime?
+  status         TaskStatus @default(OPEN)
+  completedAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+  assignee     User?        @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([assigneeUserId, status])
+}
+
+model FollowUp {
+  id             String          @id @default(cuid())
+  organizationId String
+  leadId         String
+  assigneeUserId String?
+  trigger        FollowUpTrigger @default(RULE)
+  reason         String?
+  dueAt          DateTime
+  status         TaskStatus      @default(OPEN)
+  completedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignee     User?        @relation("FollowUpAssignee", fields: [assigneeUserId], references: [id])
+
+  @@index([organizationId, status])
+}
+
+model Note {
+  id             String   @id @default(cuid())
+  organizationId String
+  subjectType    String // contact | lead | company | quote | order | shipment
+  subjectId      String
+  authorUserId   String?
+  body           String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User?        @relation(fields: [authorUserId], references: [id])
+
+  @@index([organizationId, subjectType, subjectId])
+}
+
+model Activity {
+  id             String    @id @default(cuid())
+  organizationId String
+  actorType      ActorType @default(SYSTEM)
+  actorUserId    String?
+  verb           String // created_lead, replied, sent_quote, changed_stage…
+  subjectType    String
+  subjectId      String
+  summary        String?
+  meta           Json?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUser    User?        @relation("ActivityUser", fields: [actorUserId], references: [id])
+
+  @@index([organizationId, subjectType, subjectId])
+  @@index([organizationId, createdAt])
+}
+
+// ─── Governança / LGPD ───────────────────────────────────────────────────────
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorUserId    String?
+  action         String
+  entity         String
+  entityId       String
+  before         Json?
+  after          Json?
+  ip             String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorUserId], references: [id])
+
+  @@index([organizationId, entity, entityId])
+}
+
+model Consent {
+  id             String   @id @default(cuid())
+  organizationId String
+  contactId      String
+  purpose        String
+  granted        Boolean
+  source         String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, contactId])
+}

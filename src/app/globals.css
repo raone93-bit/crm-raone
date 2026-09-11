@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* RGB triplets para uso com <alpha-value> do Tailwind — tons de azul */
+  --ground: 238 242 248;
+  --surface: 250 251 254;
+  --surface-2: 227 233 243;
+  --line: 203 214 230;
+  --ink: 16 24 39;
+  --ink-soft: 81 97 124;
+  --accent: 42 93 156;
+  --accent-soft: 222 233 248;
+  --iron: 180 85 46;
+  --gold: 147 113 31;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: 10 18 32;
+    --surface: 16 27 48;
+    --surface-2: 24 38 66;
+    --line: 40 57 90;
+    --ink: 231 236 246;
+    --ink-soft: 143 160 190;
+    --accent: 111 166 224;
+    --accent-soft: 22 40 63;
+    --iron: 221 139 94;
+    --gold: 210 177 92;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+  body {
+    @apply bg-ground text-ink;
+    font-feature-settings: "cv05", "ss01";
+  }
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-line bg-surface;
+  }
+  .label {
+    @apply font-mono text-[11px] uppercase tracking-[0.09em] text-ink-soft;
+  }
+  .input {
+    @apply w-full rounded-md border border-line bg-ground px-3 py-2 text-sm text-ink
+           outline-none placeholder:text-ink-soft focus:border-accent
+           focus:ring-2 focus:ring-accent/25;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2
+           text-sm font-medium transition-colors focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent/90;
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-surface text-ink hover:bg-surface-2;
+  }
+}
