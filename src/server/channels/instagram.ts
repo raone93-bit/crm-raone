@@ -2,9 +2,15 @@ import type { ChannelAdapter, ParsedInbound, ParsedStatus, RoutingHint, SendConf
 import { graphPost } from "./graph";
 
 /**
- * Instagram Messaging API (via Messenger Platform).
+ * Instagram Messaging API.
  * https://developers.facebook.com/docs/messenger-platform/instagram
- * Exige conta profissional do Instagram vinculada a uma Página + App Review.
+ *
+ * Confirmado testando na prática (set/2026): contas conectadas pelo fluxo
+ * "Instagram Login" direto usam token "IGAA..." e respondem em
+ * graph.instagram.com — em graph.facebook.com dá "Cannot parse access token".
+ * Contas antigas, vinculadas a uma Página do Facebook, usam token "EAA..." e
+ * continuam em graph.facebook.com. Reconfirme contra a documentação vigente
+ * antes de trocar (item 11) — a Meta muda isso com frequência.
  */
 export const instagramAdapter: ChannelAdapter = {
   channel: "INSTAGRAM",
@@ -66,12 +72,19 @@ export const instagramAdapter: ChannelAdapter = {
 
   async sendText(config: SendConfig, to: string, text: string) {
     const id = config.igAccountId ?? "me";
-    const res = await graphPost(`${id}/messages`, config.accessToken, {
-      recipient: { id: to },
-      message: { text },
-    });
-    const messageId = res?.message_id;
-    if (!messageId) throw new Error("Instagram: resposta sem message_id.");
-    return { externalId: messageId };
+    const body = { recipient: { id: to }, message: { text } };
+    // Tenta primeiro o host do Instagram Login (token "IGAA..."); se a Meta
+    // não reconhecer o token ali, cai para o host clássico (token "EAA...").
+    try {
+      const res = await graphPost(`${id}/messages`, config.accessToken, body, "instagram");
+      const messageId = res?.message_id;
+      if (!messageId) throw new Error("Instagram: resposta sem message_id.");
+      return { externalId: messageId };
+    } catch {
+      const res = await graphPost(`${id}/messages`, config.accessToken, body, "facebook");
+      const messageId = res?.message_id;
+      if (!messageId) throw new Error("Instagram: resposta sem message_id.");
+      return { externalId: messageId };
+    }
   },
 };

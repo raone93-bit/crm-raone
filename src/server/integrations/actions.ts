@@ -37,10 +37,18 @@ async function testConnection(
       const r = await graphGet(`${ids.pageId}?fields=name`, token);
       return { ok: true, detail: `Página: ${r?.name ?? "?"}` };
     }
-    // INSTAGRAM
-    const target = ids.igAccountId ?? "me";
-    const r = await graphGet(`${target}?fields=username,name`, token);
-    return { ok: true, detail: `@${r?.username ?? "?"}` };
+    // INSTAGRAM — a conta pode ter sido conectada de dois jeitos diferentes
+    // (item 11: a Meta muda isso com frequência, então tentamos os dois):
+    //   1) Instagram Login direto (token "IGAA...") → graph.instagram.com/me
+    //   2) Facebook Login / Página (token "EAA...") → graph.facebook.com/{igAccountId}
+    try {
+      const r = await graphGet("me?fields=id,username", token, "instagram");
+      return { ok: true, detail: `@${r?.username ?? "?"} (Instagram Login, id ${r?.id})` };
+    } catch {
+      const target = ids.igAccountId ?? "me";
+      const r = await graphGet(`${target}?fields=username,name`, token, "facebook");
+      return { ok: true, detail: `@${r?.username ?? "?"} (via Página do Facebook)` };
+    }
   } catch (err) {
     if (err instanceof GraphError) return { ok: false, detail: err.message };
     return { ok: false, detail: err instanceof Error ? err.message : "Erro desconhecido" };
