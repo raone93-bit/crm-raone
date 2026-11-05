@@ -77,6 +77,9 @@ export default async function Page() {
     voiceReactivationEnabled: settings?.voiceReactivationEnabled ?? false,
     reactivationAfterDays: settings?.reactivationAfterDays ?? 7,
     maxCallsPerDay: settings?.maxCallsPerDay ?? 10,
+    voiceProvider: settings?.voiceProvider ?? "11labs",
+    voiceModel: settings?.voiceModel ?? "eleven_flash_v2_5",
+    voiceId: settings?.voiceId ?? null,
   };
   const vapiReady = vapiConfigured();
 

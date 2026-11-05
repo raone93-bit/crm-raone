@@ -42,6 +42,9 @@ export function SdrSettingsForm({
     voiceReactivationEnabled: boolean;
     reactivationAfterDays: number;
     maxCallsPerDay: number;
+    voiceProvider: string;
+    voiceModel: string | null;
+    voiceId: string | null;
   };
   users: { id: string; name: string }[];
   vapiReady: boolean;
@@ -142,6 +145,26 @@ export function SdrSettingsForm({
             <input name="maxCallsPerDay" type="number" min={1} max={200} defaultValue={current.maxCallsPerDay} className="input" />
           </Field>
         </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Voz — provedor">
+            <select name="voiceProvider" defaultValue={current.voiceProvider} className="input">
+              <option value="11labs">ElevenLabs (mais natural)</option>
+              <option value="cartesia">Cartesia (mais rápida)</option>
+              <option value="vapi">Vozes da Vapi</option>
+              <option value="openai">OpenAI</option>
+            </select>
+          </Field>
+          <Field label="Modelo da voz">
+            <input name="voiceModel" defaultValue={current.voiceModel ?? ""} placeholder="eleven_flash_v2_5" className="input font-mono text-xs" />
+          </Field>
+          <Field label="ID da voz">
+            <input name="voiceId" defaultValue={current.voiceId ?? ""} placeholder="ID copiado da Voice Library" className="input font-mono text-xs" />
+          </Field>
+        </div>
+        <p className="-mt-2 text-[11px] text-ink-soft">
+          Para escolher: no painel da Vapi, abra um assistente → aba Voice → Voice Library, ouça as vozes em português e copie o ID.
+          Na ElevenLabs use o modelo <code>eleven_flash_v2_5</code> (rápido, fala português) ou <code>eleven_multilingual_v2</code> (mais expressivo, um pouco mais lento).
+        </p>
         <label className="flex items-start gap-3">
           <input type="checkbox" name="voiceReactivationEnabled" defaultChecked={current.voiceReactivationEnabled} className="mt-1 h-4 w-4" />
           <span>

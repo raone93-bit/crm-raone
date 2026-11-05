@@ -21,6 +21,9 @@ const schema = z.object({
   vapiPhoneNumberId: z.string().trim().max(80).optional(),
   reactivationAfterDays: z.coerce.number().int().min(2).max(90).default(7),
   maxCallsPerDay: z.coerce.number().int().min(1).max(200).default(10),
+  voiceProvider: z.enum(["11labs", "cartesia", "openai", "vapi"]).default("11labs"),
+  voiceModel: z.string().trim().max(60).optional(),
+  voiceId: z.string().trim().max(120).optional(),
 });
 
 /** Salva a configuração do agente SDR. Só admin. */
@@ -55,6 +58,9 @@ export async function saveSdrSettings(_prev: SdrSettingsState, formData: FormDat
     voiceReactivationEnabled: formData.get("voiceReactivationEnabled") === "on",
     reactivationAfterDays: parsed.data.reactivationAfterDays,
     maxCallsPerDay: parsed.data.maxCallsPerDay,
+    voiceProvider: parsed.data.voiceProvider,
+    voiceModel: parsed.data.voiceModel || null,
+    voiceId: parsed.data.voiceId || null,
   };
   if (data.voiceEnabled && !data.vapiPhoneNumberId) {
     return { error: "Para ligar o agente de voz, informe o ID do número na Vapi." };
