@@ -16,6 +16,7 @@ import {
   BarChart3,
   Plug,
   Settings,
+  Bot,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { href: "/clientes", label: "Clientes", icon: Users },
       { href: "/empresas", label: "Empresas", icon: Building2 },
       { href: "/funil", label: "Funil", icon: Filter },
+      { href: "/agente-sdr", label: "Agente SDR", icon: Bot, roles: ["ADMIN"] },
       {
         href: "/vendedores",
         label: "Vendedores",

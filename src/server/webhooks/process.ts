@@ -4,6 +4,7 @@ import type { Prisma, WebhookProvider } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ingestInboundMessage } from "@/server/conversations/ingest";
 import { adapterForProvider, resolveIntegration } from "@/server/channels/registry";
+import { runSdrForInbound } from "@/server/sdr/agent";
 
 const MAX_ATTEMPTS = 5;
 
@@ -83,8 +84,17 @@ export async function processWebhookQueue(limit = 25): Promise<ProcessSummary> {
       // Mensagens de entrada → pipeline de ingestão.
       for (const parsed of adapter.parseInbound(payload)) {
         if (!parsed.externalContactId || !parsed.text) continue;
-        await ingestInboundMessage({ organizationId: integration.organizationId, ...parsed });
+        const r = await ingestInboundMessage({ organizationId: integration.organizationId, ...parsed });
         summary.ingested += 1;
+        // Agente SDR: responde sozinho se estiver ligado (as guardas decidem).
+        // Nunca derruba o processamento do webhook — erros vão para a timeline.
+        if (!r.duplicateMessage) {
+          await runSdrForInbound({
+            organizationId: integration.organizationId,
+            conversationId: r.conversationId,
+            messageId: r.messageId,
+          });
+        }
       }
 
       // Atualizações de status das mensagens que enviamos.

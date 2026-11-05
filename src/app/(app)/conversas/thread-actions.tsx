@@ -1,6 +1,11 @@
 "use client";
 
-import { markConversationRead, setConversationStatus, assignConversation } from "@/server/conversations/actions";
+import {
+  markConversationRead,
+  setConversationStatus,
+  assignConversation,
+  toggleConversationAi,
+} from "@/server/conversations/actions";
 
 export function ThreadActions({
   conversationId,
@@ -9,6 +14,8 @@ export function ThreadActions({
   canAssign,
   sellers,
   currentSellerId,
+  aiPaused,
+  aiPausedReason,
 }: {
   conversationId: string;
   status: string;
@@ -16,9 +23,22 @@ export function ThreadActions({
   canAssign: boolean;
   sellers: { id: string; displayName: string }[];
   currentSellerId: string | null;
+  aiPaused: boolean;
+  aiPausedReason: string | null;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <form action={toggleConversationAi}>
+        <input type="hidden" name="conversationId" value={conversationId} />
+        <input type="hidden" name="paused" value={aiPaused ? "false" : "true"} />
+        <button
+          type="submit"
+          className="btn-ghost text-xs"
+          title={aiPaused ? aiPausedReason ?? "Agente pausado" : "Agente SDR respondendo nesta conversa"}
+        >
+          {aiPaused ? "▶ Religar agente" : "⏸ Pausar agente"}
+        </button>
+      </form>
       {unread > 0 ? (
         <form action={markConversationRead}>
           <input type="hidden" name="conversationId" value={conversationId} />

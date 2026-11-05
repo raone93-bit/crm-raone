@@ -29,6 +29,25 @@ Vitest. Deploy na Vercel, banco no Neon.
 | 6 | Exportação: embarques com máquina de estados de 11 etapas, booking/armador/navio, containers, checklist de documentos, ETD/ETA, consignee/notify/forwarder/despachante | ✅ |
 | 7 | Relatórios (por vendedor/canal/idioma/mercado/material, conversão, ticket, tempos de ciclo, motivos de perda) + reativação automática de leads parados | ✅ |
 
+## Agente SDR (piloto automático)
+
+Responde sozinho no WhatsApp, Instagram Direct e Messenger (e-mail fica fora),
+no idioma do cliente. Código em `src/server/sdr/`, tela em **Agente SDR** (admin).
+
+- **O que faz:** qualifica pelos critérios da tela, registra os dados no lead,
+  consulta o estoque real, agenda ligação (cria tarefa `CALL` para o vendedor) e
+  passa a conversa para um humano quando o lead está qualificado ou pede preço.
+- **O que nunca faz:** preço, prazo, condição de pagamento, ou estoque sem
+  consultar. O guardrail `checkReply` bloqueia o texto, manda uma mensagem de
+  espera e cria tarefa urgente.
+- **Sai da conversa** quando um vendedor responde pelo CRM, quando passa o caso,
+  ou quando o cliente pede para parar (registra `Consent`). Botão
+  "Pausar/Religar agente" em cada conversa.
+- **Limites:** só dentro da janela de 24 h da Meta, teto de respostas por
+  conversa/24 h, só a mensagem mais recente dispara (debounce).
+- **Testar sem a Meta:** simulador em Conversas aciona o agente.
+- **Precisa:** `ANTHROPIC_API_KEY` (e opcional `SDR_MODEL`).
+
 ## Rodar localmente (precisa de Node 20+)
 
 ```bash
