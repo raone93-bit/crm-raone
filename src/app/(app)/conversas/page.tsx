@@ -11,6 +11,7 @@ import { ConversationList } from "./conversation-list";
 import { ReplyBox } from "./reply-box";
 import { ThreadActions } from "./thread-actions";
 import { Simulator } from "./simulator";
+import { vapiConfigured } from "@/server/voice/config";
 
 export const metadata = { title: "Conversas" };
 
@@ -22,10 +23,12 @@ export default async function ConversasPage({
   const user = await requireUser();
   const { id } = await searchParams;
 
-  const [conversations, integration] = await Promise.all([
+  const [conversations, integration, sdr] = await Promise.all([
     listConversations(user, {}),
     prisma.integration.findFirst({ where: { organizationId: user.organizationId, status: "CONNECTED" } }),
+    prisma.sdrSettings.findUnique({ where: { organizationId: user.organizationId } }),
   ]);
+  const voiceReady = !!sdr?.voiceEnabled && !!sdr.vapiPhoneNumberId && vapiConfigured();
   const channelReady = !!integration;
 
   const conversation = id ? await getConversation(user, id) : null;
@@ -89,6 +92,7 @@ export default async function ConversasPage({
                 currentSellerId={conversation.assignedSellerId}
                 aiPaused={conversation.aiPaused}
                 aiPausedReason={conversation.aiPausedReason}
+                voiceReady={voiceReady}
               />
             </div>
 
@@ -112,6 +116,9 @@ export default async function ConversasPage({
                           </p>
                         ) : null}
                         <p className="whitespace-pre-wrap">{m.text}</p>
+                        {m.channel === "PHONE" && m.mediaUrl ? (
+                          <audio controls preload="none" src={m.mediaUrl} className="mt-2 w-full max-w-xs" />
+                        ) : null}
                         <p className={cn("mt-1 text-[10px]", out ? "text-white/70" : "text-ink-soft")}>
                           {formatDateTime(m.externalTimestamp ?? m.createdAt)}
                           {out && m.sentByAi ? " · IA" : ""}

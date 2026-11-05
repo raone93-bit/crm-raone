@@ -206,7 +206,29 @@ export async function runTool(name: string, input: any, ctx: ToolContext): Promi
 
     case "schedule_call": {
       ctx.state.actions.push(`agendou ligação: ${input.preferred_time}`);
-      const due = input.due_at_iso ? new Date(input.due_at_iso) : null;
+      const parsedDue = input.due_at_iso ? new Date(input.due_at_iso) : null;
+      const due = parsedDue && !Number.isNaN(parsedDue.getTime()) ? parsedDue : null;
+
+      // O cliente pediu/aceitou a ligação: isso é o consentimento para ligar.
+      await prisma.consent.create({
+        data: { organizationId: ctx.organizationId, contactId: ctx.contactId, purpose: "calls", granted: true, source: "sdr_schedule_call" },
+      });
+
+      // Agente de voz ligado + horário exato → a IA liga sozinha nesse horário.
+      let aiCall: { ok: boolean; reason?: string } = { ok: false, reason: "sem horário exato (due_at_iso)" };
+      if (due && due.getTime() > Date.now() - 5 * 60_000) {
+        const { startCall } = await import("@/server/voice/vapi");
+        aiCall = await startCall({
+          organizationId: ctx.organizationId,
+          contactId: ctx.contactId,
+          leadId: ctx.leadId,
+          purpose: "scheduled",
+          phone: input.phone,
+          earliestAt: due,
+          latestAt: new Date(due.getTime() + 30 * 60_000),
+        }).catch((err: unknown) => ({ ok: false, reason: err instanceof Error ? err.message : String(err) }));
+      }
+
       const task = await prisma.task.create({
         data: {
           organizationId: ctx.organizationId,
@@ -219,15 +241,25 @@ export async function runTool(name: string, input: any, ctx: ToolContext): Promi
             input.mode && `Meio: ${input.mode}`,
             input.phone && `Telefone: ${input.phone}`,
             input.reason && `Motivo: ${input.reason}`,
-            "Agendado pelo Agente SDR. Confirme o horário com o cliente se precisar.",
+            aiCall.ok
+              ? "O agente de VOZ vai ligar nesse horário. Acompanhe o resumo na conversa de Telefone."
+              : `Ligação a cargo do vendedor${aiCall.reason ? ` (IA não liga: ${aiCall.reason})` : ""}.`,
           ]
             .filter(Boolean)
             .join("\n"),
-          dueAt: due && !Number.isNaN(due.getTime()) ? due : undefined,
+          dueAt: due ?? undefined,
         },
       });
-      await activity(ctx, "scheduled_call", `Agente SDR agendou ligação: ${input.preferred_time}`);
-      return { scheduled: true, taskId: task.id };
+      await activity(
+        ctx,
+        "scheduled_call",
+        `Agente SDR agendou ligação: ${input.preferred_time}${aiCall.ok ? " — a IA de voz vai ligar" : ""}`,
+      );
+      return {
+        scheduled: true,
+        taskId: task.id,
+        whoCalls: aiCall.ok ? "assistente de voz (IA), no horário combinado" : "um especialista da equipe",
+      };
     }
 
     case "handoff_to_human": {

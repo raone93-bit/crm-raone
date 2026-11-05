@@ -48,6 +48,24 @@ no idioma do cliente. Código em `src/server/sdr/`, tela em **Agente SDR** (admi
 - **Testar sem a Meta:** simulador em Conversas aciona o agente.
 - **Precisa:** `ANTHROPIC_API_KEY` (e opcional `SDR_MODEL`).
 
+### Agente de voz (Vapi)
+
+Código em `src/server/voice/`, webhook em `/api/webhooks/vapi`. Ligado na
+seção "Ligações" da tela Agente SDR.
+
+- **Atende** o número da Vapi: o assistente é montado na hora com o contexto
+  do contato (lead, últimas mensagens do chat). No painel da Vapi, no número,
+  deixe o assistente vazio e use a Server URL do webhook com credencial Bearer
+  igual ao `VAPI_WEBHOOK_SECRET`.
+- **Liga no horário marcado:** quando o cliente aceita uma ligação no chat, o
+  `schedule_call` grava o consentimento e cria a ligação agendada na Vapi.
+- **Retorna leads parados** (cron diário): só quem aceitou ligação e não pediu
+  para parar; horário comercial do país do cliente; 1 vez a cada 14 dias.
+- **Botão "Ligar com IA"** na conversa.
+- Mesmas ferramentas e regras do SDR (nunca preço/prazo/pagamento), mais
+  `do_not_call`. Resumo, transcrição e gravação ficam na conversa de Telefone.
+- **Precisa:** `VAPI_API_KEY`, `VAPI_WEBHOOK_SECRET` e o ID do número na tela.
+
 ## Rodar localmente (precisa de Node 20+)
 
 ```bash
