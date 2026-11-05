@@ -5,6 +5,7 @@ import {
   setConversationStatus,
   assignConversation,
   toggleConversationAi,
+  callWithAi,
 } from "@/server/conversations/actions";
 
 export function ThreadActions({
@@ -16,6 +17,7 @@ export function ThreadActions({
   currentSellerId,
   aiPaused,
   aiPausedReason,
+  voiceReady,
 }: {
   conversationId: string;
   status: string;
@@ -25,9 +27,23 @@ export function ThreadActions({
   currentSellerId: string | null;
   aiPaused: boolean;
   aiPausedReason: string | null;
+  voiceReady: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {voiceReady ? (
+        <form
+          action={callWithAi}
+          onSubmit={(e) => {
+            if (!confirm("O agente de voz vai ligar agora para este contato. Confirmar?")) e.preventDefault();
+          }}
+        >
+          <input type="hidden" name="conversationId" value={conversationId} />
+          <button type="submit" className="btn-ghost text-xs" title="Agente de voz liga agora (resultado aparece na conversa de Telefone)">
+            📞 Ligar com IA
+          </button>
+        </form>
+      ) : null}
       <form action={toggleConversationAi}>
         <input type="hidden" name="conversationId" value={conversationId} />
         <input type="hidden" name="paused" value={aiPaused ? "false" : "true"} />

@@ -204,3 +204,43 @@ export async function toggleConversationAi(formData: FormData) {
   });
   revalidatePath("/conversas");
 }
+
+/** Vendedor pede para o agente de voz ligar agora para o contato da conversa. */
+export async function callWithAi(formData: FormData) {
+  const user = await requireUser();
+  if (!can(user.role, "edit", "conversation")) throw new Error("Sem permissão.");
+  const { conversationId } = idSchema.parse(Object.fromEntries(formData));
+  const conv = await prisma.conversation.findFirst({
+    where: { id: conversationId, ...conversationVisibilityWhere(user) },
+  });
+  if (!conv) throw new Error("Conversa não encontrada.");
+
+  const lead = await prisma.lead.findFirst({
+    where: { organizationId: user.organizationId, contactId: conv.contactId, wonAt: null, lostAt: null },
+    orderBy: { createdAt: "desc" },
+  });
+  const { startCall } = await import("@/server/voice/vapi");
+  const r = await startCall({
+    organizationId: user.organizationId,
+    contactId: conv.contactId,
+    leadId: lead?.id ?? null,
+    purpose: "manual",
+    phone:
+      conv.channel === "WHATSAPP" && conv.externalThreadId
+        ? `+${conv.externalThreadId.replace(/\D/g, "")}`
+        : conv.channel === "PHONE"
+          ? conv.externalThreadId
+          : null,
+    earliestAt: new Date(),
+  }).catch((err: unknown) => ({ ok: false as const, reason: err instanceof Error ? err.message : String(err) }));
+
+  await record(user, {
+    action: "ai_call",
+    entity: "conversation",
+    entityId: conv.id,
+    subjectType: "contact",
+    subjectId: conv.contactId,
+    summary: r.ok ? "Pediu ligação do agente de voz" : `Ligação do agente de voz não saiu: ${r.reason}`,
+  });
+  revalidatePath("/conversas");
+}

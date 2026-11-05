@@ -1380,6 +1380,15 @@ model SdrSettings {
   // Teto de respostas automáticas por conversa em 24 h (anti-loop).
   maxRepliesPerDay      Int       @default(15)
   model                 String?
+
+  // ── Voz (Vapi) ──
+  voiceEnabled             Boolean @default(false)
+  // ID do número de telefone cadastrado na Vapi (para ligar e atender).
+  vapiPhoneNumberId        String?
+  // Retornar por ligação leads parados que aceitaram receber ligação.
+  voiceReactivationEnabled Boolean @default(false)
+  reactivationAfterDays    Int     @default(7)
+  maxCallsPerDay           Int     @default(10)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 

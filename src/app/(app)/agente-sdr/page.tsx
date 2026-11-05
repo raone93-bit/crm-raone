@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { SdrSettingsForm } from "./settings-form";
+import { appUrl, vapiConfigured } from "@/server/voice/config";
 
 export const metadata = { title: "Agente SDR" };
 
@@ -41,7 +42,7 @@ export default async function Page() {
   const orgId = user.organizationId;
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [settings, users, replies, handoffs, calls, paused, log] = await Promise.all([
+  const [settings, users, replies, handoffs, calls, paused, log, voiceCalls] = await Promise.all([
     prisma.sdrSettings.findUnique({ where: { organizationId: orgId } }),
     prisma.user.findMany({ where: { organizationId: orgId, active: true }, orderBy: { name: "asc" } }),
     prisma.message.count({ where: { organizationId: orgId, sentByAi: true, createdAt: { gte: weekAgo } } }),
@@ -52,11 +53,12 @@ export default async function Page() {
       where: {
         organizationId: orgId,
         actorType: "AI",
-        verb: { in: ["ai_replied", "ai_handoff", "scheduled_call", "opted_out", "ai_error"] },
+        verb: { in: ["ai_replied", "ai_handoff", "scheduled_call", "opted_out", "ai_error", "call_queued", "call_ended"] },
       },
       orderBy: { createdAt: "desc" },
       take: 25,
     }),
+    prisma.activity.count({ where: { organizationId: orgId, verb: "call_ended", createdAt: { gte: weekAgo } } }),
   ]);
 
   const keySet = !!process.env.ANTHROPIC_API_KEY;
@@ -70,13 +72,19 @@ export default async function Page() {
     handoffUserId: settings?.handoffUserId ?? null,
     maxRepliesPerDay: settings?.maxRepliesPerDay ?? 15,
     model: settings?.model ?? null,
+    voiceEnabled: settings?.voiceEnabled ?? false,
+    vapiPhoneNumberId: settings?.vapiPhoneNumberId ?? null,
+    voiceReactivationEnabled: settings?.voiceReactivationEnabled ?? false,
+    reactivationAfterDays: settings?.reactivationAfterDays ?? 7,
+    maxCallsPerDay: settings?.maxCallsPerDay ?? 10,
   };
+  const vapiReady = vapiConfigured();
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Agente SDR"
-        description="Atende WhatsApp, Instagram e Messenger sozinho: responde no idioma do cliente, qualifica, registra no lead, agenda ligação e passa para um vendedor. Nunca informa preço, prazo ou condição de pagamento."
+        description="Atende WhatsApp, Instagram e Messenger sozinho e, com a voz ligada, também liga e atende telefone: responde no idioma do cliente, qualifica, registra no lead e passa para um vendedor. Nunca informa preço, prazo ou condição de pagamento."
       />
 
       {!keySet ? (
@@ -91,12 +99,22 @@ export default async function Page() {
         <StatTile label="Status" value={current.enabled && keySet ? "Ligado" : "Desligado"} tone={current.enabled && keySet ? "accent" : "gold"} />
         <StatTile label="Respostas (7 dias)" value={replies} />
         <StatTile label="Passados ao vendedor" value={handoffs} hint="7 dias" />
-        <StatTile label="Ligações agendadas" value={calls} hint={`${paused} conversa(s) com agente pausado`} href="/tarefas" />
+        <StatTile
+          label="Ligações (7 dias)"
+          value={voiceCalls}
+          hint={`${calls} agendada(s) · ${paused} conversa(s) com agente pausado`}
+          href="/tarefas"
+        />
       </div>
 
       <Card>
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-medium">Configuração</h2>
-        <SdrSettingsForm current={current} users={users.map((u) => ({ id: u.id, name: u.name ?? u.email }))} />
+        <SdrSettingsForm
+          current={current}
+          users={users.map((u) => ({ id: u.id, name: u.name ?? u.email }))}
+          vapiReady={vapiReady}
+          webhookUrl={`${appUrl()}/api/webhooks/vapi`}
+        />
       </Card>
 
       <Card>

@@ -12,6 +12,8 @@ export type SdrPromptInput = {
   nowIso: string;
   lead: Record<string, unknown> | null;
   contact: { name: string | null; country: string | null; language: string | null };
+  /** Agente de voz ligado: o próprio assistente liga no horário marcado. */
+  voiceCallsEnabled?: boolean;
 };
 
 export function buildSdrSystemPrompt(p: SdrPromptInput): string {
@@ -44,8 +46,13 @@ QUANDO PASSAR PARA UM HUMANO (handoff_to_human)
 - Lead qualificado (critérios atendidos) ou com intenção clara de compra.
 Depois do handoff, mande uma última mensagem curta avisando que um especialista vai continuar o atendimento.
 
-LIGAÇÕES
-Você não liga. Se o cliente preferir conversar por telefone/vídeo, pergunte o melhor dia e horário (com fuso) e use schedule_call; confirme que um especialista vai ligar nesse horário.
+${
+    p.voiceCallsEnabled
+      ? `LIGAÇÕES
+Se o cliente preferir conversar por telefone, pergunte se pode ligar e o melhor dia e horário (com fuso). Com o "sim" dele, use schedule_call com due_at_iso e o telefone. Explique que o nosso assistente de voz vai ligar nesse horário para entender o projeto e que um especialista acompanha. Nunca agende ligação sem o cliente concordar.`
+      : `LIGAÇÕES
+Você não liga. Se o cliente preferir conversar por telefone/vídeo, pergunte o melhor dia e horário (com fuso) e use schedule_call; confirme que um especialista vai ligar nesse horário.`
+  }
 
 FINALIZAÇÃO
 Termine SEMPRE chamando send_reply com o texto exato a enviar, ou no_reply se não houver nada a responder (ex.: o cliente só disse "ok", "obrigado" depois de já ter sido atendido, ou mandou figurinha).

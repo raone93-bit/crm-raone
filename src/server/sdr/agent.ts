@@ -8,6 +8,7 @@ import { asksForHuman, checkReply, decideAutoReply, detectOptOut } from "./guard
 import { buildSdrSystemPrompt } from "./prompt";
 import { SDR_TOOLS, runTool, type ToolContext } from "./tools";
 import { toClaudeMessages } from "./history";
+import { vapiConfigured } from "@/server/voice/config";
 
 /**
  * AGENTE SDR — piloto automático de atendimento.
@@ -157,6 +158,7 @@ async function run({
     companyName: settings.companyName,
     knowledgeBase: settings.knowledgeBase,
     qualificationCriteria: settings.qualificationCriteria,
+    voiceCallsEnabled: settings.voiceEnabled && !!settings.vapiPhoneNumberId && vapiConfigured(),
     channel: CHANNEL_LABEL[conversation.channel] ?? conversation.channel,
     nowIso: new Date().toISOString(),
     contact: {

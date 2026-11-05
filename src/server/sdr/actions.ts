@@ -18,6 +18,9 @@ const schema = z.object({
   handoffUserId: z.string().optional(),
   maxRepliesPerDay: z.coerce.number().int().min(1).max(100),
   model: z.string().trim().max(80).optional(),
+  vapiPhoneNumberId: z.string().trim().max(80).optional(),
+  reactivationAfterDays: z.coerce.number().int().min(2).max(90).default(7),
+  maxCallsPerDay: z.coerce.number().int().min(1).max(200).default(10),
 });
 
 /** Salva a configuração do agente SDR. Só admin. */
@@ -47,7 +50,15 @@ export async function saveSdrSettings(_prev: SdrSettingsState, formData: FormDat
     handoffUserId,
     maxRepliesPerDay: parsed.data.maxRepliesPerDay,
     model: parsed.data.model || null,
+    voiceEnabled: formData.get("voiceEnabled") === "on",
+    vapiPhoneNumberId: parsed.data.vapiPhoneNumberId || null,
+    voiceReactivationEnabled: formData.get("voiceReactivationEnabled") === "on",
+    reactivationAfterDays: parsed.data.reactivationAfterDays,
+    maxCallsPerDay: parsed.data.maxCallsPerDay,
   };
+  if (data.voiceEnabled && !data.vapiPhoneNumberId) {
+    return { error: "Para ligar o agente de voz, informe o ID do número na Vapi." };
+  }
 
   const before = await prisma.sdrSettings.findUnique({ where: { organizationId: user.organizationId } });
   const saved = await prisma.sdrSettings.upsert({
@@ -61,8 +72,10 @@ export async function saveSdrSettings(_prev: SdrSettingsState, formData: FormDat
     entity: "sdr_settings",
     entityId: saved.id,
     before: before ? { enabled: before.enabled, channels: before.channels } : undefined,
-    after: { enabled, channels },
-    summary: `Agente SDR ${enabled ? "ligado" : "desligado"} (${channels.join(", ") || "sem canais"})`,
+    after: { enabled, channels, voiceEnabled: data.voiceEnabled, voiceReactivationEnabled: data.voiceReactivationEnabled },
+    summary: `Agente SDR ${enabled ? "ligado" : "desligado"} (${channels.join(", ") || "sem canais"}) · voz ${
+      data.voiceEnabled ? "ligada" : "desligada"
+    }`,
   });
 
   revalidatePath("/agente-sdr");

@@ -24,6 +24,8 @@ function Save() {
 export function SdrSettingsForm({
   current,
   users,
+  vapiReady,
+  webhookUrl,
 }: {
   current: {
     enabled: boolean;
@@ -35,8 +37,15 @@ export function SdrSettingsForm({
     handoffUserId: string | null;
     maxRepliesPerDay: number;
     model: string | null;
+    voiceEnabled: boolean;
+    vapiPhoneNumberId: string | null;
+    voiceReactivationEnabled: boolean;
+    reactivationAfterDays: number;
+    maxCallsPerDay: number;
   };
   users: { id: string; name: string }[];
+  vapiReady: boolean;
+  webhookUrl: string;
 }) {
   const [state, action] = useActionState<SdrSettingsState, FormData>(saveSdrSettings, {});
 
@@ -107,6 +116,50 @@ export function SdrSettingsForm({
           Não coloque preço aqui: o agente nunca informa preço, prazo ou condição de pagamento — isso vai para o vendedor.
         </span>
       </Field>
+
+      <fieldset className="grid gap-4 rounded-md border border-line p-4">
+        <legend className="px-1 text-sm font-medium">Ligações (agente de voz · Vapi)</legend>
+        {!vapiReady ? (
+          <p className="text-xs text-gold">
+            Falta configurar <code>VAPI_API_KEY</code> e <code>VAPI_WEBHOOK_SECRET</code> na Vercel.
+          </p>
+        ) : null}
+        <label className="flex items-start gap-3">
+          <input type="checkbox" name="voiceEnabled" defaultChecked={current.voiceEnabled} className="mt-1 h-4 w-4" />
+          <span>
+            <span className="block text-sm font-medium">Ligar e atender com IA</span>
+            <span className="text-xs text-ink-soft">
+              Atende o número da Vapi, liga no horário que o cliente marcou pelo chat e habilita o botão
+              &quot;Ligar com IA&quot; nas conversas. Mesmas regras: nunca preço, prazo ou pagamento.
+            </span>
+          </span>
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="ID do número na Vapi (Phone Number ID)">
+            <input name="vapiPhoneNumberId" defaultValue={current.vapiPhoneNumberId ?? ""} className="input font-mono text-xs" placeholder="ex.: 3f2a…" />
+          </Field>
+          <Field label="Máx. ligações por dia">
+            <input name="maxCallsPerDay" type="number" min={1} max={200} defaultValue={current.maxCallsPerDay} className="input" />
+          </Field>
+        </div>
+        <label className="flex items-start gap-3">
+          <input type="checkbox" name="voiceReactivationEnabled" defaultChecked={current.voiceReactivationEnabled} className="mt-1 h-4 w-4" />
+          <span>
+            <span className="block text-sm font-medium">Retornar leads parados por ligação</span>
+            <span className="text-xs text-ink-soft">
+              Só quem aceitou receber ligação e não pediu para parar. Liga em horário comercial do país do cliente, no máximo
+              1 vez a cada 14 dias por lead.
+            </span>
+          </span>
+        </label>
+        <Field label="Considerar parado após (dias sem contato)">
+          <input name="reactivationAfterDays" type="number" min={2} max={90} defaultValue={current.reactivationAfterDays} className="input w-32" />
+        </Field>
+        <p className="text-[11px] text-ink-soft">
+          Para atender ligações: no painel da Vapi, no seu número, deixe o assistente vazio e use como Server URL{" "}
+          <code className="break-all">{webhookUrl}</code> com uma credencial Bearer igual ao <code>VAPI_WEBHOOK_SECRET</code>.
+        </p>
+      </fieldset>
 
       <details className="text-sm">
         <summary className="cursor-pointer text-ink-soft">Avançado</summary>
