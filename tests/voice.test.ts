@@ -95,3 +95,25 @@ describe("prompt e saudação de voz", () => {
     expect(firstMessage("ES", "reactivation", "Ana", "Toledo", "Contato WHATSAPP")).not.toContain("Contato");
   });
 });
+
+import { voiceConfig } from "@/server/voice/vapi";
+
+describe("voiceConfig", () => {
+  it("padrão é ElevenLabs Flash v2.5 (natural e fala português)", () => {
+    expect(voiceConfig({ voiceProvider: "11labs", voiceModel: null, voiceId: null })).toEqual({
+      provider: "11labs",
+      model: "eleven_flash_v2_5",
+      voiceId: "sarah",
+    });
+  });
+  it("usa a voz escolhida na tela", () => {
+    expect(voiceConfig({ voiceProvider: "11labs", voiceModel: "eleven_multilingual_v2", voiceId: "abc123" })).toEqual({
+      provider: "11labs",
+      model: "eleven_multilingual_v2",
+      voiceId: "abc123",
+    });
+  });
+  it("provedor sem voz escolhida volta para a ElevenLabs", () => {
+    expect(voiceConfig({ voiceProvider: "cartesia", voiceModel: null, voiceId: null }).provider).toBe("11labs");
+  });
+});

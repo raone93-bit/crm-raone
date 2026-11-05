@@ -105,6 +105,26 @@ export async function callAllowed(
   return { ok: true };
 }
 
+// ── Voz ─────────────────────────────────────────────────────────────────────
+
+/** Padrões por provedor quando a tela não informa modelo/voz (só valores documentados). */
+const VOICE_DEFAULTS: Record<string, { model?: string; voiceId?: string }> = {
+  "11labs": { model: "eleven_flash_v2_5", voiceId: "sarah" },
+  openai: { voiceId: "alloy" },
+  cartesia: {},
+  vapi: {},
+};
+
+export function voiceConfig(s: Pick<SdrSettings, "voiceProvider" | "voiceModel" | "voiceId">) {
+  const provider = s.voiceProvider || process.env.VAPI_VOICE_PROVIDER || "11labs";
+  const d = VOICE_DEFAULTS[provider] ?? {};
+  const voiceId = s.voiceId || process.env.VAPI_VOICE_ID || d.voiceId;
+  // Provedor sem voz escolhida e sem padrão conhecido → volta para a ElevenLabs.
+  if (!voiceId) return { provider: "11labs", model: "eleven_flash_v2_5", voiceId: "sarah" };
+  const model = s.voiceModel || d.model;
+  return { provider, voiceId, ...(model ? { model } : {}) };
+}
+
 // ── Assistente da ligação ───────────────────────────────────────────────────
 
 export async function buildAssistant(params: {
@@ -176,10 +196,7 @@ export async function buildAssistant(params: {
       ],
       tools: voiceTools(),
     },
-    voice: {
-      provider: process.env.VAPI_VOICE_PROVIDER || "openai",
-      voiceId: process.env.VAPI_VOICE_ID || "alloy",
-    },
+    voice: voiceConfig(settings),
     transcriber: {
       provider: "deepgram",
       model: process.env.VAPI_TRANSCRIBER_MODEL || "nova-3",

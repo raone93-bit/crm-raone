@@ -1389,6 +1389,10 @@ model SdrSettings {
   voiceReactivationEnabled Boolean @default(false)
   reactivationAfterDays    Int     @default(7)
   maxCallsPerDay           Int     @default(10)
+  // Voz da ligação: provedor (11labs, cartesia, openai, vapi…), modelo e ID da voz.
+  voiceProvider            String  @default("11labs")
+  voiceModel               String? @default("eleven_flash_v2_5")
+  voiceId                  String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
