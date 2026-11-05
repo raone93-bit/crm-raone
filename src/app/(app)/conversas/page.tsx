@@ -87,6 +87,8 @@ export default async function ConversasPage({
                 canAssign={can(user.role, "assign", "conversation")}
                 sellers={sellers.map((s) => ({ id: s.id, displayName: s.displayName }))}
                 currentSellerId={conversation.assignedSellerId}
+                aiPaused={conversation.aiPaused}
+                aiPausedReason={conversation.aiPausedReason}
               />
             </div>
 
@@ -112,6 +114,7 @@ export default async function ConversasPage({
                         <p className="whitespace-pre-wrap">{m.text}</p>
                         <p className={cn("mt-1 text-[10px]", out ? "text-white/70" : "text-ink-soft")}>
                           {formatDateTime(m.externalTimestamp ?? m.createdAt)}
+                          {out && m.sentByAi ? " · IA" : ""}
                           {out ? ` · ${m.status === "QUEUED" ? "na fila" : m.status.toLowerCase()}` : ""}
                         </p>
                         {out && m.errorMessage ? (

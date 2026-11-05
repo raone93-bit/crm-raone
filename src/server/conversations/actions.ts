@@ -12,6 +12,7 @@ import { ingestInboundMessage } from "@/server/conversations/ingest";
 import { sendConfigFor } from "@/server/channels/registry";
 import { flushOutbound } from "@/server/channels/outbound";
 import type { SimulateState } from "@/server/conversations/sim-data";
+import { runSdrForInbound } from "@/server/sdr/agent";
 
 const idSchema = z.object({ conversationId: z.string() });
 
@@ -55,9 +56,16 @@ export async function sendReply(_prev: ReplyState, formData: FormData): Promise<
     },
   });
 
+  // Humano respondeu: o agente SDR sai da conversa até alguém religar.
   await prisma.conversation.update({
     where: { id: conv.id },
-    data: { lastMessageAt: new Date(), lastMessagePreview: parsed.data.text.slice(0, 140), status: "OPEN" },
+    data: {
+      lastMessageAt: new Date(),
+      lastMessagePreview: parsed.data.text.slice(0, 140),
+      status: "OPEN",
+      aiPaused: true,
+      aiPausedReason: conv.aiPaused ? conv.aiPausedReason : `Assumida por ${user.name ?? user.email}`,
+    },
   });
 
   let deliveryNote = "na fila — canal pendente";
@@ -155,6 +163,13 @@ export async function simulateInbound(
     source: "simulator",
   });
 
+  // O simulador também aciona o agente SDR — é o jeito de testar sem a Meta.
+  const sdr = r.duplicateMessage
+    ? null
+    : await runSdrForInbound({ organizationId: user.organizationId, conversationId: r.conversationId, messageId: r.messageId });
+  const sdrNote =
+    !sdr ? "" : sdr.status === "replied" ? " Agente SDR respondeu." : sdr.status === "skipped" ? ` Agente SDR não respondeu: ${sdr.reason}.` : sdr.status === "error" ? ` Agente SDR falhou: ${sdr.error}.` : sdr.status === "opted_out" ? " Cliente pediu opt-out." : ` Agente SDR: ${sdr.reason}.`;
+
   revalidatePath("/conversas");
   revalidatePath("/leads");
   revalidatePath("/dashboard");
@@ -163,7 +178,29 @@ export async function simulateInbound(
     result: r.hadCommercialIntent
       ? `Intenção comercial detectada (${r.language}). ${
           r.leadCreated ? "Lead criado" : "Lead existente atualizado"
-        } · conversa ${r.duplicateMessage ? "(mensagem duplicada ignorada)" : "atualizada"}.`
-      : `Sem intenção comercial (${r.language}). Nenhum lead criado — só a conversa foi registrada.`,
+        } · conversa ${r.duplicateMessage ? "(mensagem duplicada ignorada)" : "atualizada"}.${sdrNote}`
+      : `Sem intenção comercial (${r.language}). Nenhum lead criado — só a conversa foi registrada.${sdrNote}`,
   };
+}
+
+/** Liga/desliga o agente SDR numa conversa específica. */
+export async function toggleConversationAi(formData: FormData) {
+  const user = await requireUser();
+  if (!can(user.role, "edit", "conversation")) throw new Error("Sem permissão.");
+  const parsed = z
+    .object({ conversationId: z.string(), paused: z.enum(["true", "false"]) })
+    .parse(Object.fromEntries(formData));
+  const paused = parsed.paused === "true";
+
+  await prisma.conversation.updateMany({
+    where: { id: parsed.conversationId, ...conversationVisibilityWhere(user) },
+    data: { aiPaused: paused, aiPausedReason: paused ? `Pausado por ${user.name ?? user.email}` : null },
+  });
+  await record(user, {
+    action: paused ? "ai_pause" : "ai_resume",
+    entity: "conversation",
+    entityId: parsed.conversationId,
+    summary: paused ? "Agente SDR pausado na conversa" : "Agente SDR religado na conversa",
+  });
+  revalidatePath("/conversas");
 }

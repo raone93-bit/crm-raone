@@ -357,6 +357,7 @@ model Organization {
   activities         Activity[]
   auditLogs          AuditLog[]
   consents           Consent[]
+  sdrSettings        SdrSettings?
 }
 
 // Auth.js (Prisma adapter) + campos do CRM.
@@ -760,6 +761,10 @@ model Conversation {
   lastMessageAt    DateTime?
   lastMessagePreview String?
   snoozedUntil     DateTime?
+  // Agente SDR: pausado quando um humano assume, o cliente pede para parar
+  // ou o agente passa o caso adiante.
+  aiPaused         Boolean            @default(false)
+  aiPausedReason   String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -788,6 +793,7 @@ model Message {
   mediaFileName     String?
   senderName        String?
   sentByUserId      String?
+  sentByAi          Boolean          @default(false)
   status            MessageStatus    @default(RECEIVED)
   errorCode         String?
   errorMessage      String?
@@ -1352,4 +1358,30 @@ model Consent {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, contactId])
+}
+
+// ─── Agente SDR (piloto automático de atendimento) ───────────────────────────
+
+// Uma linha por organização. Tudo editável na tela "Agente SDR" — dado, não código.
+model SdrSettings {
+  id                    String    @id @default(cuid())
+  organizationId        String    @unique
+  enabled               Boolean   @default(false)
+  // Canais em que o agente responde sozinho. E-mail fica fora por padrão.
+  channels              Channel[] @default([WHATSAPP, INSTAGRAM, FACEBOOK])
+  agentName             String    @default("Equipe Comercial")
+  companyName           String    @default("Toledo Mineração")
+  // Base de conhecimento: materiais, acabamentos, espessuras, MOQ, Incoterms…
+  knowledgeBase         String    @default("") @db.Text
+  // O que faz um lead ser qualificado (tipo de cliente, país, volume…).
+  qualificationCriteria String    @default("") @db.Text
+  // Quem recebe as tarefas de ligação e os leads passados pelo agente.
+  handoffUserId         String?
+  // Teto de respostas automáticas por conversa em 24 h (anti-loop).
+  maxRepliesPerDay      Int       @default(15)
+  model                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
