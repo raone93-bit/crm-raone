@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "prisma generate && prisma db push --skip-generate && next build",
-  "regions": ["gru1"],
   "crons": [
     {
       "path": "/api/cron/process-events",
