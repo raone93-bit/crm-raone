@@ -1389,6 +1389,11 @@ model SdrSettings {
   voiceReactivationEnabled Boolean @default(false)
   reactivationAfterDays    Int     @default(7)
   maxCallsPerDay           Int     @default(10)
+  // Colunas legadas (já existem no banco, de uma versão anterior da voz). Mantidas só para o
+  // `prisma db push` do deploy não precisar apagá-las (apagar colunas com dados trava o build).
+  voiceProvider            String  @default("11labs")
+  voiceModel               String? @default("eleven_flash_v2_5")
+  voiceId                  String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
