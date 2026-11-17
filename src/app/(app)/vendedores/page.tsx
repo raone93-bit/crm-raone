@@ -1,39 +1,21 @@
 import { requireRole } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { getSellers } from "@/lib/cached";
+import { getSellerStats } from "@/server/sellers/stats";
 import { LANGUAGE_LABEL } from "@/lib/labels";
 import { PageHeader, Card, StatTile } from "@/components/ui";
 
 export const metadata = { title: "Vendedores" };
 
-function startOfMonth() {
-  const d = new Date();
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 export default async function VendedoresPage() {
   const user = await requireRole("ADMIN", "MANAGER");
 
-  const sellers = await prisma.seller.findMany({
-    where: { organizationId: user.organizationId },
-    include: { user: true },
-    orderBy: { displayName: "asc" },
-  });
+  const sellers = await getSellers(user.organizationId);
+  const statsBySeller = await getSellerStats(user.organizationId, sellers);
 
-  const stats = await Promise.all(
-    sellers.map(async (s) => {
-      const [open, hot, wonMonth, lostMonth, overdue, noFollowUp] = await Promise.all([
-        prisma.lead.count({ where: { organizationId: user.organizationId, sellerId: s.id, wonAt: null, lostAt: null } }),
-        prisma.lead.count({ where: { organizationId: user.organizationId, sellerId: s.id, temperature: "HOT", wonAt: null, lostAt: null } }),
-        prisma.lead.count({ where: { organizationId: user.organizationId, sellerId: s.id, wonAt: { gte: startOfMonth() } } }),
-        prisma.lead.count({ where: { organizationId: user.organizationId, sellerId: s.id, lostAt: { gte: startOfMonth() } } }),
-        prisma.followUp.count({ where: { organizationId: user.organizationId, assigneeUserId: s.userId, status: "OPEN", dueAt: { lt: new Date() } } }),
-        prisma.lead.count({ where: { organizationId: user.organizationId, sellerId: s.id, wonAt: null, lostAt: null, nextFollowUpAt: null } }),
-      ]);
-      return { seller: s, open, hot, wonMonth, lostMonth, overdue, noFollowUp };
-    }),
-  );
+  const stats = sellers.map((s) => {
+    const r = statsBySeller.get(s.id)!;
+    return { seller: s, open: r.open, hot: r.hot, wonMonth: r.wonMonth, lostMonth: r.lostMonth, overdue: r.overdue, noFollowUp: r.noFollowUp };
+  });
 
   return (
     <div>

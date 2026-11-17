@@ -165,3 +165,34 @@ export function DataRow({ label, value }: { label: string; value: ReactNode }) {
     </div>
   );
 }
+
+export function Pager({
+  page,
+  hasMore,
+  hrefFor,
+}: {
+  page: number;
+  hasMore: boolean;
+  hrefFor: (page: number) => string;
+}) {
+  if (page <= 1 && !hasMore) return null;
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm">
+      {page > 1 ? (
+        <a href={hrefFor(page - 1)} className="btn-ghost h-8 px-3 text-xs">
+          ← Anterior
+        </a>
+      ) : (
+        <span />
+      )}
+      <span className="text-xs text-ink-soft">Página {page}</span>
+      {hasMore ? (
+        <a href={hrefFor(page + 1)} className="btn-ghost h-8 px-3 text-xs">
+          Próxima →
+        </a>
+      ) : (
+        <span />
+      )}
+    </div>
+  );
+}

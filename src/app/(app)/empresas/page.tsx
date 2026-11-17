@@ -3,18 +3,35 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { COMPANY_TYPE_LABEL } from "@/lib/labels";
-import { PageHeader, EmptyState } from "@/components/ui";
+import { PageHeader, EmptyState, Pager } from "@/components/ui";
 
 export const metadata = { title: "Empresas" };
 
-export default async function EmpresasPage() {
+const PAGE_SIZE = 50;
+
+export default async function EmpresasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const user = await requireUser();
-  const companies = await prisma.company.findMany({
+  const sp = await searchParams;
+  const page = Number(sp.page) > 1 ? Math.floor(Number(sp.page)) : 1;
+  const rows = await prisma.company.findMany({
     where: { organizationId: user.organizationId },
-    include: { _count: { select: { contacts: true, leads: true } } },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      country: true,
+      _count: { select: { contacts: true, leads: true } },
+    },
     orderBy: { name: "asc" },
-    take: 300,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE + 1,
   });
+  const hasMore = rows.length > PAGE_SIZE;
+  const companies = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
 
   return (
     <div>
@@ -58,6 +75,7 @@ export default async function EmpresasPage() {
           </table>
         </div>
       )}
+      <Pager page={page} hasMore={hasMore} hrefFor={(p) => (p > 1 ? "/empresas?page=" + p : "/empresas")} />
     </div>
   );
 }

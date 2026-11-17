@@ -5,7 +5,7 @@ import { seesAllSellers } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { QUOTE_STATUS_LABEL } from "@/lib/labels";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { PageHeader, EmptyState, Badge } from "@/components/ui";
+import { PageHeader, EmptyState, Badge, Pager } from "@/components/ui";
 
 export const metadata = { title: "Cotações" };
 
@@ -18,17 +18,37 @@ const TONE: Record<string, "default" | "accent" | "iron" | "gold"> = {
   CONVERTED: "accent",
 };
 
-export default async function CotacoesPage() {
+const PAGE_SIZE = 50;
+
+export default async function CotacoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const user = await requireUser();
-  const quotes = await prisma.quote.findMany({
+  const sp = await searchParams;
+  const page = Number(sp.page) > 1 ? Math.floor(Number(sp.page)) : 1;
+  const rows = await prisma.quote.findMany({
     where: {
       organizationId: user.organizationId,
       ...(seesAllSellers(user.role) ? {} : { ownerUserId: user.id }),
     },
-    include: { customer: { include: { contact: true, company: true } }, _count: { select: { items: true } } },
+    select: {
+      id: true,
+      number: true,
+      total: true,
+      currency: true,
+      status: true,
+      createdAt: true,
+      customer: { select: { name: true, contact: { select: { displayName: true } }, company: { select: { name: true } } } },
+      _count: { select: { items: true } },
+    },
     orderBy: { createdAt: "desc" },
-    take: 200,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE + 1,
   });
+  const hasMore = rows.length > PAGE_SIZE;
+  const quotes = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
 
   return (
     <div>
@@ -80,6 +100,7 @@ export default async function CotacoesPage() {
           </table>
         </div>
       )}
+      <Pager page={page} hasMore={hasMore} hrefFor={(p) => (p > 1 ? "/cotacoes?page=" + p : "/cotacoes")} />
     </div>
   );
 }

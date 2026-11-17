@@ -5,25 +5,42 @@ import { seesAllSellers } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { ORDER_STATUS_LABEL, MARKET_LABEL } from "@/lib/labels";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { PageHeader, EmptyState, Badge } from "@/components/ui";
+import { PageHeader, EmptyState, Badge, Pager } from "@/components/ui";
 
 export const metadata = { title: "Pedidos" };
 
-export default async function PedidosPage() {
+const PAGE_SIZE = 50;
+
+export default async function PedidosPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const user = await requireUser();
-  const orders = await prisma.order.findMany({
+  const sp = await searchParams;
+  const page = Number(sp.page) > 1 ? Math.floor(Number(sp.page)) : 1;
+  const rows = await prisma.order.findMany({
     where: {
       organizationId: user.organizationId,
       ...(seesAllSellers(user.role) ? {} : { ownerUserId: user.id }),
     },
-    include: {
-      customer: { include: { contact: true, company: true } },
+    select: {
+      id: true,
+      number: true,
+      market: true,
+      total: true,
+      currency: true,
+      status: true,
+      createdAt: true,
+      customer: { select: { name: true, contact: { select: { displayName: true } }, company: { select: { name: true } } } },
       shipment: { select: { status: true } },
-      _count: { select: { payments: true } },
     },
     orderBy: { createdAt: "desc" },
-    take: 200,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE + 1,
   });
+  const hasMore = rows.length > PAGE_SIZE;
+  const orders = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
 
   return (
     <div>
@@ -71,6 +88,7 @@ export default async function PedidosPage() {
           </table>
         </div>
       )}
+      <Pager page={page} hasMore={hasMore} hrefFor={(p) => (p > 1 ? "/pedidos?page=" + p : "/pedidos")} />
     </div>
   );
 }

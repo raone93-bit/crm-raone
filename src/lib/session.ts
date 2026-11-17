@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Role } from "@prisma/client";
 
@@ -12,7 +13,9 @@ export type CurrentUser = {
   sellerId: string | null;
 };
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+// `cache` do React: layout, página e componentes da MESMA requisição
+// compartilham uma única leitura da sessão (antes cada um decodificava de novo).
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await auth();
   if (!session?.user) return null;
   return {
@@ -23,7 +26,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     organizationId: session.user.organizationId,
     sellerId: session.user.sellerId,
   };
-}
+});
 
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();

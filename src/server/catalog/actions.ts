@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { record } from "@/lib/audit";
+import { TAGS } from "@/lib/cached";
 
 const num = (v: unknown) => (v === "" || v == null ? undefined : v);
 
@@ -52,6 +53,7 @@ export async function createMaterial(_prev: CatalogState, formData: FormData): P
     },
   });
   await record(user, { action: "create", entity: "material", entityId: material.id, verb: "created_material", summary: `Material ${material.commercialName}` });
+  revalidateTag(TAGS.materials(user.organizationId));
   revalidatePath("/produtos");
   redirect(`/produtos/${material.id}`);
 }

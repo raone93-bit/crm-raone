@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { getSellers } from "@/lib/cached";
 import { listConversations, getConversation } from "@/server/conversations/queries";
 import { CHANNEL_LABEL, LANGUAGE_LABEL, INTENT_LABEL } from "@/lib/labels";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -23,21 +24,19 @@ export default async function ConversasPage({
   const user = await requireUser();
   const { id } = await searchParams;
 
-  const [conversations, integration, sdr] = await Promise.all([
+  const [conversations, integration, conversation, allSellers, sdr] = await Promise.all([
     listConversations(user, {}),
-    prisma.integration.findFirst({ where: { organizationId: user.organizationId, status: "CONNECTED" } }),
+    prisma.integration.findFirst({
+      where: { organizationId: user.organizationId, status: "CONNECTED" },
+      select: { id: true },
+    }),
+    id ? getConversation(user, id) : Promise.resolve(null),
+    can(user.role, "assign", "conversation") ? getSellers(user.organizationId) : Promise.resolve([]),
     prisma.sdrSettings.findUnique({ where: { organizationId: user.organizationId } }),
   ]);
   const voiceReady = !!sdr?.voiceEnabled && !!sdr.vapiPhoneNumberId && vapiConfigured();
   const channelReady = !!integration;
-
-  const conversation = id ? await getConversation(user, id) : null;
-  const sellers = can(user.role, "assign", "conversation")
-    ? await prisma.seller.findMany({
-        where: { organizationId: user.organizationId, active: true, isTriageQueue: false },
-        orderBy: { displayName: "asc" },
-      })
-    : [];
+  const sellers = allSellers.filter((s) => s.active && !s.isTriageQueue);
 
   const listItems = conversations.map((c) => ({
     id: c.id,

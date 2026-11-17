@@ -5,7 +5,7 @@ import { seesAllSellers } from "@/lib/rbac";
 import { listLeads } from "@/server/leads/queries";
 import { CHANNEL_LABEL } from "@/lib/labels";
 import { formatDate, relativeTime } from "@/lib/utils";
-import { PageHeader, TemperatureBadge, EmptyState, Badge } from "@/components/ui";
+import { PageHeader, TemperatureBadge, EmptyState, Badge, Pager } from "@/components/ui";
 
 export const metadata = { title: "Leads" };
 
@@ -30,7 +30,7 @@ export default async function LeadsPage({
     q: sp.q,
     status: (sp.status as "open" | "won" | "lost") ?? "open",
   };
-  const leads = await listLeads(user, filters);
+  const { rows: leads, page, hasMore } = await listLeads(user, filters, Number(sp.page) || 1);
 
   const qs = (patch: Record<string, string | undefined>) => {
     const merged = { ...sp, ...patch };
@@ -151,6 +151,7 @@ export default async function LeadsPage({
           </table>
         </div>
       )}
+      <Pager page={page} hasMore={hasMore} hrefFor={(p) => `/leads${qs({ page: p > 1 ? String(p) : undefined })}`} />
     </div>
   );
 }

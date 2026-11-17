@@ -25,35 +25,82 @@ export async function listConversations(user: CurrentUser, filter: ConversationF
 
   return prisma.conversation.findMany({
     where: { AND: and },
-    include: {
-      contact: { include: { identities: true } },
-      seller: true,
+    select: {
+      id: true,
+      channel: true,
+      lastMessagePreview: true,
+      lastMessageAt: true,
+      unreadCount: true,
+      status: true,
+      contact: { select: { displayName: true } },
+      seller: { select: { displayName: true } },
     },
     orderBy: { lastMessageAt: "desc" },
-    take: 100,
+    take: 60,
   });
 }
 
 export async function getConversation(user: CurrentUser, id: string) {
   const conversation = await prisma.conversation.findFirst({
     where: { id, ...conversationVisibilityWhere(user) },
-    include: {
+    select: {
+      id: true,
+      channel: true,
+      status: true,
+      unreadCount: true,
+      contactId: true,
+      assignedSellerId: true,
+      aiPaused: true,
+      aiPausedReason: true,
       contact: {
-        include: {
-          identities: true,
-          customer: true,
+        select: {
+          displayName: true,
           leads: {
             where: { wonAt: null, lostAt: null },
             orderBy: { updatedAt: "desc" },
             take: 1,
-            include: { stage: true, seller: true, material: true, scoreFactors: true },
+            select: {
+              id: true,
+              temperature: true,
+              score: true,
+              materialText: true,
+              thicknessCm: true,
+              squareMeters: true,
+              quantitySlabs: true,
+              language: true,
+              intentType: true,
+              hasProject: true,
+              stage: { select: { name: true } },
+              seller: { select: { displayName: true } },
+              material: { select: { commercialName: true } },
+            },
           },
         },
       },
-      seller: { include: { user: true } },
-      messages: { orderBy: { createdAt: "asc" }, include: { aiAnalysis: true } },
+      seller: { select: { displayName: true } },
+      // só as 150 mensagens mais recentes (devolvidas em ordem cronológica)
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 150,
+        select: {
+          id: true,
+          direction: true,
+          channel: true,
+          mediaUrl: true,
+          sentByAi: true,
+          type: true,
+          mediaFileName: true,
+          text: true,
+          externalTimestamp: true,
+          createdAt: true,
+          status: true,
+          errorMessage: true,
+          aiAnalysis: { select: { suggestedReply: true, summary: true } },
+        },
+      },
     },
   });
+  if (conversation) conversation.messages.reverse();
   return conversation;
 }
 

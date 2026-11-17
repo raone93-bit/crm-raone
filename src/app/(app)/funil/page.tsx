@@ -2,8 +2,8 @@ import Link from "next/link";
 
 import { requireUser } from "@/lib/session";
 import { seesAllSellers } from "@/lib/rbac";
-import { prisma } from "@/lib/prisma";
-import { listLeads } from "@/server/leads/queries";
+import { getStages, getSellers } from "@/lib/cached";
+import { listBoardLeads } from "@/server/leads/queries";
 import { PageHeader } from "@/components/ui";
 import { Board } from "./board";
 
@@ -17,23 +17,12 @@ export default async function FunilPage({
   const user = await requireUser();
   const sp = await searchParams;
 
-  const [stages, sellers] = await Promise.all([
-    prisma.funnelStage.findMany({
-      where: { funnel: { organizationId: user.organizationId, isDefault: true } },
-      orderBy: { position: "asc" },
-    }),
-    seesAllSellers(user.role)
-      ? prisma.seller.findMany({
-          where: { organizationId: user.organizationId, isTriageQueue: false },
-          orderBy: { displayName: "asc" },
-        })
-      : [],
+  const [stages, allSellers, leads] = await Promise.all([
+    getStages(user.organizationId),
+    seesAllSellers(user.role) ? getSellers(user.organizationId) : Promise.resolve([]),
+    listBoardLeads(user, { status: "open", sellerId: sp.seller }),
   ]);
-
-  const leads = await listLeads(user, {
-    status: "open",
-    sellerId: sp.seller,
-  });
+  const sellers = allSellers.filter((s) => !s.isTriageQueue);
 
   return (
     <div>

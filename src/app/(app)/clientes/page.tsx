@@ -4,9 +4,11 @@ import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { CHANNEL_LABEL } from "@/lib/labels";
 import { relativeTime } from "@/lib/utils";
-import { PageHeader, EmptyState, Badge } from "@/components/ui";
+import { PageHeader, EmptyState, Badge, Pager } from "@/components/ui";
 
 export const metadata = { title: "Clientes" };
+
+const PAGE_SIZE = 50;
 
 export default async function ClientesPage({
   searchParams,
@@ -17,20 +19,37 @@ export default async function ClientesPage({
   const sp = await searchParams;
   const onlyCustomers = sp.tab === "customers";
 
-  const contacts = await prisma.contact.findMany({
+  const page = Number(sp.page) > 1 ? Math.floor(Number(sp.page)) : 1;
+  const rows = await prisma.contact.findMany({
     where: {
       organizationId: user.organizationId,
       ...(onlyCustomers ? { customer: { isNot: null } } : {}),
       ...(sp.q ? { displayName: { contains: sp.q, mode: "insensitive" } } : {}),
     },
-    include: {
-      identities: true,
-      customer: true,
+    select: {
+      id: true,
+      displayName: true,
+      possibleDuplicateOfId: true,
+      country: true,
+      updatedAt: true,
+      identities: { select: { channel: true } },
+      customer: { select: { id: true } },
       _count: { select: { leads: true } },
     },
     orderBy: { updatedAt: "desc" },
-    take: 200,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE + 1,
   });
+  const hasMore = rows.length > PAGE_SIZE;
+  const contacts = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
+  const pageHref = (p: number) => {
+    const params = new URLSearchParams();
+    if (sp.tab) params.set("tab", sp.tab);
+    if (sp.q) params.set("q", sp.q);
+    if (p > 1) params.set("page", String(p));
+    const q = params.toString();
+    return q ? "/clientes?" + q : "/clientes";
+  };
 
   return (
     <div>
@@ -100,6 +119,7 @@ export default async function ClientesPage({
           </table>
         </div>
       )}
+      <Pager page={page} hasMore={hasMore} hrefFor={pageHref} />
     </div>
   );
 }
